@@ -29,12 +29,16 @@ export interface Zone {
   occupied: number;
   free: number;
   reserved: number;
+  reservedSlots: number;
+  availableSlots: number;
   availableForVisitors: number;
   availableForSubscribers: number;
   rateNormal: number;
   rateSpecial: number;
   open: boolean;
   specialActive?: boolean; // WebSocket field for special rate status
+  categoryName?: string; // Optional field for display purposes
+  updatedAt?: string; // Optional field for tracking updates
 }
 
 export interface Gate {
@@ -83,6 +87,7 @@ export interface CheckinRequest {
   zoneId: string;
   type: "visitor" | "subscriber";
   subscriptionId?: string;
+  licensePlate?: string;
 }
 
 export interface CheckinResponse {
@@ -222,3 +227,12 @@ export type UserRole = "admin" | "employee";
 export type TicketType = "visitor" | "subscriber";
 export type RateMode = "normal" | "special";
 export type NotificationType = "success" | "error" | "warning" | "info";
+
+export interface TicketData {
+  id?: string;
+  zoneName?: string;
+  checkInAt?: string;
+  expiresAt?: string;
+  amount?: number;
+  qrCode?: string;
+}
