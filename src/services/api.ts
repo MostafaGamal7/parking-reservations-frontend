@@ -52,13 +52,35 @@ function getAuthHeaders(token?: string): HeadersInit {
 
 // Auth API
 export const authApi = {
-  login: async (username: string, password: string): Promise<AuthResponse> => {
+  login: async (credentials: {
+    username: string;
+    password: string;
+    role: string;
+  }): Promise<AuthResponse> => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify(credentials),
     });
     return handleResponse<AuthResponse>(response);
+  },
+
+  refreshToken: async (token?: string): Promise<AuthResponse> => {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: getAuthHeaders(token),
+    });
+    return handleResponse<AuthResponse>(response);
+  },
+
+  verifyToken: async (
+    token: string
+  ): Promise<{ valid: boolean; user?: User }> => {
+    const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+      method: "POST",
+      headers: getAuthHeaders(token),
+    });
+    return handleResponse<{ valid: boolean; user?: User }>(response);
   },
 };
 
