@@ -42,7 +42,9 @@ export default function ProtectedRoute({
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    router.push("/login");
+    const next = typeof window !== "undefined" ? window.location.pathname : "/";
+    const roleQuery = requiredRole ? `&role=${requiredRole}` : "";
+    router.push(`/login?next=${encodeURIComponent(next)}${roleQuery}`);
     return null;
   }
 

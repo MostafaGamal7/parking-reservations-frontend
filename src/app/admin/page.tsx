@@ -1,46 +1,61 @@
-"use client";
-
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { useAppSelector } from "@/hooks/redux";
-import { useAppDispatch } from "@/hooks/redux";
-import { logoutUser } from "@/store/slices/authSlice";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { headers } from "next/headers";
+import { masterApi, adminApi } from "@/services/api";
 
-export default function AdminDashboard() {
-  const dispatch = useAppDispatch();
-  const router = useRouter();
-  const { user } = useAppSelector((state) => state.auth);
+interface DashboardStats {
+  totalZones: number;
+  activeSessions: number;
+  revenueToday: number;
+  totalEmployees: number;
+}
 
-  const handleLogout = () => {
-    dispatch(logoutUser());
-    router.push("/login");
-  };
+async function getDashboardStats(): Promise<DashboardStats> {
+  const headersList = await headers();
+  const token = headersList.get("authorization") || "";
+
+  try {
+    // Get all necessary data
+    const [zones, parkingState, users] = await Promise.all([
+      masterApi.getZones(),
+      adminApi.getParkingState(token),
+      adminApi.getUsers(token),
+    ]);
+
+    // Calculate active sessions from occupied slots across all zones
+    const activeSessions = parkingState.reduce(
+      (total, state) => total + (state.occupied || 0),
+      0
+    );
+
+    // For revenue, we need ticket checkout data from today which isn't available yet
+    const revenueToday = 0;
+
+    return {
+      totalZones: zones.length,
+      activeSessions,
+      revenueToday,
+      totalEmployees: users.length,
+    };
+  } catch (error) {
+    console.error("Failed to fetch dashboard stats:", error);
+    return {
+      totalZones: 0,
+      activeSessions: 0,
+      revenueToday: 0,
+      totalEmployees: 0,
+    };
+  }
+}
+
+export default async function AdminDashboard() {
+  const stats = await getDashboardStats();
 
   return (
     <ErrorBoundary>
       <ProtectedRoute requiredRole="admin">
         <div className="min-h-screen bg-gray-50">
-          {/* Header */}
-          <div className="bg-white shadow-sm border-b">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center py-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Admin Dashboard
-                  </h1>
-                  <p className="text-gray-600">Welcome back, {user?.name}</p>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          </div>
-
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -65,7 +80,9 @@ export default function AdminDashboard() {
                     <p className="text-sm font-medium text-gray-600">
                       Total Zones
                     </p>
-                    <p className="text-2xl font-semibold text-gray-900">12</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {stats.totalZones}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -91,7 +108,9 @@ export default function AdminDashboard() {
                     <p className="text-sm font-medium text-gray-600">
                       Active Sessions
                     </p>
-                    <p className="text-2xl font-semibold text-gray-900">47</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {stats.activeSessions}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -118,7 +137,7 @@ export default function AdminDashboard() {
                       Revenue Today
                     </p>
                     <p className="text-2xl font-semibold text-gray-900">
-                      $2,340
+                      ${stats.revenueToday.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -145,7 +164,9 @@ export default function AdminDashboard() {
                     <p className="text-sm font-medium text-gray-600">
                       Employees
                     </p>
-                    <p className="text-2xl font-semibold text-gray-900">8</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {stats.totalEmployees}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -159,7 +180,10 @@ export default function AdminDashboard() {
                   Zone Management
                 </h2>
                 <div className="space-y-3">
-                  <button className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Link
+                    href="/admin/zones"
+                    className="block w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-medium text-gray-900">
@@ -183,9 +207,12 @@ export default function AdminDashboard() {
                         />
                       </svg>
                     </div>
-                  </button>
+                  </Link>
 
-                  <button className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Link
+                    href="/admin/categories"
+                    className="block w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-medium text-gray-900">
@@ -209,7 +236,7 @@ export default function AdminDashboard() {
                         />
                       </svg>
                     </div>
-                  </button>
+                  </Link>
                 </div>
               </div>
 
@@ -219,7 +246,10 @@ export default function AdminDashboard() {
                   Employee Management
                 </h2>
                 <div className="space-y-3">
-                  <button className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Link
+                    href="/admin/users"
+                    className="block w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-medium text-gray-900">
@@ -243,9 +273,12 @@ export default function AdminDashboard() {
                         />
                       </svg>
                     </div>
-                  </button>
+                  </Link>
 
-                  <button className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Link
+                    href="/admin/reports"
+                    className="block w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-medium text-gray-900">
@@ -269,7 +302,7 @@ export default function AdminDashboard() {
                         />
                       </svg>
                     </div>
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -279,4 +312,3 @@ export default function AdminDashboard() {
     </ErrorBoundary>
   );
 }
-

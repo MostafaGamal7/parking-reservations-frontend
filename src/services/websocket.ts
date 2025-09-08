@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { WebSocketMessage } from "@/types";
+import { logger } from "@/lib/logger";
 
 const getWebSocketUrl = (): string | null => {
   if (typeof window === "undefined") return null;
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("welink_auth_token");
   const baseUrl =
     process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3000/api/v1/ws";
   // Only connect when a token exists
@@ -40,7 +41,7 @@ export class WebSocketClient {
 
     // Don't try to reconnect if we've exceeded max attempts
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log("Max reconnection attempts reached");
+      logger.warn("Max reconnection attempts reached");
       return;
     }
 
@@ -58,7 +59,7 @@ export class WebSocketClient {
       try {
         this.ws.close();
       } catch (e) {
-        console.error("Error closing WebSocket:", e);
+        logger.error("Error closing WebSocket:", e);
       }
     }
 
@@ -68,17 +69,17 @@ export class WebSocketClient {
     try {
       const wsUrl = getWebSocketUrl();
       if (!wsUrl) {
-        console.error("Cannot connect to WebSocket: No URL available");
+        logger.error("Cannot connect to WebSocket: No URL available");
         return;
       }
 
-      console.log(
+      logger.debug(
         `Connecting to WebSocket (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
       );
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log("WebSocket connected");
+        logger.info("WebSocket connected");
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.lastError = null;
@@ -98,21 +99,21 @@ export class WebSocketClient {
             try {
               handler(message);
             } catch (err) {
-              console.error("Error in WebSocket message handler:", err);
+              logger.error("Error in WebSocket message handler:", err);
             }
           });
         } catch (error) {
-          console.error("Error parsing WebSocket message:", error, event.data);
+          logger.error("Error processing WebSocket message:", error, event.data);
         }
       };
 
       this.ws.onclose = (event) => {
-        console.log(`WebSocket closed: ${event.code} ${event.reason}`);
+        logger.info(`WebSocket closed: ${event.code} ${event.reason}`);
         this.isConnecting = false;
 
         // Don't try to reconnect if this was a normal closure
         if (event.code === 1000) {
-          console.log("WebSocket closed normally");
+          logger.info("WebSocket closed normally");
           return;
         }
 
@@ -120,12 +121,12 @@ export class WebSocketClient {
       };
 
       this.ws.onerror = (event) => {
-        console.error("WebSocket error:", event);
+        logger.error("WebSocket error:", event);
         this.lastError = "WebSocket connection error";
         // The onclose handler will be called after onerror
       };
     } catch (error) {
-      console.error("Error creating WebSocket connection:", error);
+      logger.error("Error creating WebSocket connection:", error);
       this.isConnecting = false;
       this.lastError =
         error?.toString() || "Failed to create WebSocket connection";
@@ -135,7 +136,8 @@ export class WebSocketClient {
 
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log("Max reconnection attempts reached");
+      logger.debug("Admin update received");
+      logger.debug("Max reconnection attempts reached");
       this.lastError =
         "Unable to connect to server. Please refresh the page to try again.";
       return;
@@ -150,7 +152,7 @@ export class WebSocketClient {
     const jitter = Math.random() * 1000;
     const delay = Math.floor(baseDelay + jitter);
 
-    console.log(
+    logger.debug(
       `Attempting to reconnect in ${delay}ms (attempt ${
         this.reconnectAttempts + 1
       }/${this.maxReconnectAttempts})`
@@ -176,7 +178,7 @@ export class WebSocketClient {
           })
         );
       } catch (error) {
-        console.error("Error sending subscribe message:", error);
+        logger.error("Error sending subscribe message:", error);
       }
     } else {
       // If not connected, try to connect (will resubscribe on open)
@@ -224,7 +226,7 @@ export class WebSocketClient {
   private checkConnection(): void {
     // If we think we're connected but the readyState says otherwise, update our state
     if (this.ws && this.ws.readyState !== WebSocket.OPEN) {
-      console.log("Connection check failed, reconnecting...");
+      logger.warn("Connection check failed, reconnecting...");
       this.connect();
     }
   }
@@ -245,7 +247,7 @@ export class WebSocketClient {
       try {
         this.ws.close(1000, "Client disconnecting");
       } catch (error) {
-        console.error("Error closing WebSocket:", error);
+        logger.error("Error refreshing zones:", error);
       }
       this.ws = null;
     }
@@ -276,7 +278,7 @@ export const useWebSocket = () => {
   // Get current token from localStorage
   const getCurrentToken = useCallback(() => {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem("token");
+    return localStorage.getItem("welink_auth_token");
   }, []);
 
   // Handle token changes and reconnection

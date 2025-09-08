@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, User, Lock, Shield } from "lucide-react";
+import { Eye, EyeOff, User, Lock, Shield, AlertCircle } from "lucide-react";
 import { loginSchema, type LoginFormData } from "@/utils/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +18,11 @@ import {
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAppDispatch } from "@/hooks/redux";
 import { loginUser } from "@/store/slices/authSlice";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useSearchParams } from "next/navigation";
 
 interface LoginFormProps {
-  onSuccess?: () => void;
+  onSuccess?: (role: "employee" | "admin") => void;
   defaultRole?: "employee" | "admin";
 }
 
@@ -30,7 +32,9 @@ export default function LoginForm({
 }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const dispatch = useAppDispatch();
+  const searchParams = useSearchParams();
 
   const {
     register,
@@ -49,14 +53,25 @@ export default function LoginForm({
 
   const selectedRole = watch("role");
 
+  // Sync role from URL query parameter
+  useEffect(() => {
+    const roleFromUrl = searchParams?.get('role');
+    if (roleFromUrl === 'admin' || roleFromUrl === 'employee') {
+      setValue('role', roleFromUrl);
+    }
+  }, [searchParams, setValue]);
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
       await dispatch(loginUser(data)).unwrap();
-      onSuccess?.();
-    } catch (error) {
-      console.error("Login failed:", error);
-      // Error handling is done in the Redux slice
+      onSuccess?.(data.role);
+    } catch (err) {
+      const errorMessage = "Invalid credentials. Please check your username and password.";
+      setError(errorMessage);
+      // Clear the error after 5 seconds
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
     } finally {
       setIsLoading(false);
     }
@@ -75,6 +90,14 @@ export default function LoginForm({
       </CardHeader>
 
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Role Selection */}
           <div className="space-y-2">
@@ -176,4 +199,3 @@ export default function LoginForm({
     </Card>
   );
 }
-

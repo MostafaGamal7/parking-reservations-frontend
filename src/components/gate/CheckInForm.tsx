@@ -6,8 +6,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Car, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Zone } from '@/types/zone';
 import { TicketData } from '@/types';
+
 type FormData = {
   licensePlate: string;
 };
@@ -40,7 +42,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
     e.stopPropagation();
 
     if (!selectedZone) {
-      console.error('No zone selected');
+      logger.error('No zone selected');
       return;
     }
 
@@ -49,7 +51,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
     const trimmedLicensePlate = licensePlateValue ? String(licensePlateValue).trim() : '';
 
     if (!trimmedLicensePlate) {
-      console.error('License plate is required');
+      logger.error('License plate is required');
       return;
     }
 
@@ -67,9 +69,6 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
     e.stopPropagation();
   };
-  // {isVisitor ? selectedZone.availableForVisitors : selectedZone.availableForSubscribers}
-  console.log(selectedZone);
-  console.log(isVisitor);
 
   return (
     <div className={cn('space-y-4', className)}>

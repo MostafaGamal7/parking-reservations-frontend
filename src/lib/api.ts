@@ -18,7 +18,7 @@ export async function fetchWithAuth(input: string, init?: RequestInit) {
 
   if (response.status === 401) {
     // Token expired or invalid, clear it and redirect to login
-    localStorage.removeItem('token');
+    localStorage.removeItem('welink_auth_token');
     window.location.href = '/checkpoint/login';
     throw new Error('Session expired. Please log in again.');
   }

@@ -124,16 +124,16 @@ export interface CheckoutResponse {
 
 export interface RushHour {
   id: string;
-  weekDay: number;
-  from: string;
-  to: string;
+  dayOfWeek: number; // 1-7 where 1 is Monday
+  startTime: string; // HH:mm format
+  endTime: string; // HH:mm format
 }
 
 export interface Vacation {
   id: string;
   name: string;
-  from: string;
-  to: string;
+  startDate: string; // ISO date string
+  endDate: string; // ISO date string
 }
 
 export interface ParkingStateReport {

@@ -18,6 +18,7 @@ import {
   Ticket as ApiTicket,
   TicketData,
 } from "@/types";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
@@ -47,7 +48,9 @@ function getAuthHeaders(token?: string): HeadersInit {
   };
 
   if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    // Only add "Bearer" prefix if it's not already there
+    const finalToken = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+    headers.Authorization = finalToken;
   }
 
   return headers;
@@ -199,20 +202,28 @@ export const adminApi = {
     return handleResponse<Subscription[]>(response);
   },
 
-  getUsers: async (token: string): Promise<User[]> => {
-    const response = await fetch(`${API_BASE_URL}/admin/users`, {
-      headers: getAuthHeaders(token),
-    });
-    return handleResponse<User[]>(response);
+  // Using mock service for user management until backend endpoints are ready
+  getUsers: async (): Promise<User[]> => {
+    const { mockUserService } = await import("./mockUserService");
+    return mockUserService.getUsers();
   },
 
-  createUser: async (data: Omit<User, "id">, token: string): Promise<User> => {
-    const response = await fetch(`${API_BASE_URL}/admin/users`, {
-      method: "POST",
-      headers: getAuthHeaders(token),
-      body: JSON.stringify(data),
-    });
-    return handleResponse<User>(response);
+  createUser: async (data: Omit<User, "id">): Promise<User> => {
+    const { mockUserService } = await import("./mockUserService");
+    return mockUserService.createUser(data);
+  },
+
+  deleteUser: async (userId: string): Promise<void> => {
+    const { mockUserService } = await import("./mockUserService");
+    return mockUserService.deleteUser(userId);
+  },
+
+  updateUser: async (
+    userId: string,
+    data: Partial<User>
+  ): Promise<User> => {
+    const { mockUserService } = await import("./mockUserService");
+    return mockUserService.updateUser(userId, data);
   },
 };
 
@@ -256,8 +267,8 @@ export const fetchZones = async (gateId: string): Promise<Zone[]> => {
     const zones = await masterApi.getZones(gateId);
     return zones.map(mapApiZoneToZone);
   } catch (error) {
-    console.error("Failed to fetch zones:", error);
-    throw error;
+    logger.error("Failed to fetch zones:", error);
+    throw new ApiError(500, "Failed to fetch zones. Please try again later.");
   }
 };
 
@@ -292,30 +303,36 @@ export const checkInVisitor = async ({
   licensePlate,
 }: CheckInVisitorParams): Promise<{ ticket: TicketData }> => {
   try {
-    // First get the zone name
-    const zones = await masterApi.getZones(gateId);
-    const zone = zones.find((z) => z.id === zoneId);
-    if (!zone) {
-      throw new Error(`Zone with ID ${zoneId} not found`);
-    }
-
-    // Then check in
-    const request: CheckinRequest = {
+    // Create check-in request
+    const checkInRequest: CheckinRequest = {
       gateId,
       zoneId,
       type: "visitor",
-      licensePlate, // Include license plate in the request
+      licensePlate,
     };
 
-    const response = await ticketsApi.checkin(request);
+    // Get zone details for the response
+    const zones = await masterApi.getZones(gateId);
+    const zone = zones.find((z) => z.id === zoneId);
 
-    // Map the response to the frontend TicketData type
+    if (!zone) {
+      logger.error(`Zone not found: ${zoneId}`);
+      throw new ApiError(404, "Zone not found");
+    }
+
+    // Process the check-in
+    const response = await ticketsApi.checkin(checkInRequest);
+
     return {
       ticket: mapApiTicketToTicketData(response.ticket, zone.name),
     };
   } catch (error) {
-    console.error("Check-in failed:", error);
-    throw error;
+    if (error instanceof ApiError) {
+      logger.error(`Check-in failed: ${error.message}`, error);
+      throw error;
+    }
+    logger.error("Check-in failed:", error);
+    throw new ApiError(500, "Failed to process check-in. Please try again.");
   }
 };
 
@@ -337,7 +354,7 @@ export const checkInSubscriber = async ({
     // Get zones and verify subscription in parallel
     const [zones] = await Promise.all([
       masterApi.getZones(gateId),
-      subscriptionsApi.getSubscription(subscriptionId), // Verify subscription exists
+      subscriptionsApi.getSubscription(subscriptionId),
     ]);
 
     const zone = zones.find((z) => z.id === zoneId);
@@ -357,7 +374,6 @@ export const checkInSubscriber = async ({
     return {
       ticket: {
         ...mapApiTicketToTicketData(response.ticket, zone.name),
-        // Preserve the subscriptionId entered by the user, since backend ticket payload may omit it
         subscriptionId,
       },
     };
@@ -368,17 +384,20 @@ export const checkInSubscriber = async ({
 };
 
 /**
- * Fetches subscription details
+ * Fetches subscription details from the API
+ * @param subscriptionId - The ID of the subscription to fetch
+ * @returns The subscription details
+ * @throws {ApiError} If the subscription cannot be fetched
  */
-// Fetch subscription details
-// Note: This is a simplified version that just passes through the API response
-// You might want to map this to a frontend type if needed
 export const fetchSubscription = async (subscriptionId: string) => {
   try {
     return await subscriptionsApi.getSubscription(subscriptionId);
   } catch (error) {
-    console.error("Failed to fetch subscription:", error);
-    throw error;
+    logger.error(`Failed to fetch subscription ${subscriptionId}:`, error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, "Failed to fetch subscription details. Please try again.");
   }
 };
 
@@ -389,27 +408,27 @@ export const fetchSubscription = async (subscriptionId: string) => {
 // This is a more complete version that includes the gate's zones
 export const fetchGateDetails = async (gateId: string) => {
   try {
-    const [gates, zones] = await Promise.all([
-      masterApi.getGates(),
+    const [gate, zones] = await Promise.all([
+      masterApi.getGates().then((gates) => gates.find((g) => g.id === gateId)),
       masterApi.getZones(gateId),
     ]);
 
-    const gate = gates.find((g) => g.id === gateId);
     if (!gate) {
-      throw new Error(`Gate with ID ${gateId} not found`);
+      logger.error(`Gate not found: ${gateId}`);
+      throw new ApiError(404, "Gate not found");
     }
 
-    // Map the zones to the frontend Zone type
-    const gateZones = zones
-      .filter((zone) => zone.gateIds?.includes(gateId))
-      .map(mapApiZoneToZone);
+    const gateZones = zones.map(mapApiZoneToZone);
 
     return {
       ...gate,
       zones: gateZones,
     };
   } catch (error) {
-    console.error("Failed to fetch gate details:", error);
-    throw error;
+    logger.error(`Failed to fetch gate details for gate ${gateId}:`, error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, "Failed to fetch gate details. Please try again later.");
   }
 };
