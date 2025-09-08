@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Zone } from '@/types/zone';
-import { cn } from '@/lib/utils';
-import { Info, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import React from "react";
+import { Zone } from "@/types/zone";
+import { cn } from "@/lib/utils";
+import { Info, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 
 interface ZoneCardProps {
   zone: Zone & {
@@ -28,23 +28,27 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
   className,
 }) => {
   // Check if this is a maintenance zone
-  const isMaintenance = zone.categoryName?.toLowerCase().includes('maintenance') || false;
-  
+  const isMaintenance =
+    zone.categoryName?.toLowerCase().includes("maintenance") || false;
+
   console.log(zone);
   console.log(isVisitor);
   // Get availability information from server data
-  const availableSlots = isVisitor ? zone.availableForVisitors : zone.availableForSubscribers;
+  const availableSlots = isVisitor
+    ? zone.availableForVisitors
+    : zone.availableForSubscribers;
   const isAvailable = isMaintenance || (zone.open && availableSlots > 0);
-  
+
   // Determine if zone is disabled
-  const isDisabled = propIsDisabled !== undefined 
-    ? Boolean(propIsDisabled)
-    : !zone.open || availableSlots <= 0;
-  
+  const isDisabled =
+    propIsDisabled !== undefined
+      ? Boolean(propIsDisabled)
+      : !zone.open || availableSlots <= 0;
+
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (isDisabled) return;
     // Only update selection, don't trigger check-in
     onSelect(zone.id);
@@ -60,7 +64,7 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
         </span>
       );
     }
-    
+
     if (!zone.open) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -69,7 +73,7 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
         </span>
       );
     }
-    
+
     // Show different status based on user type
     if (isVisitor) {
       if (zone.availableForVisitors <= 0) {
@@ -90,27 +94,27 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
         );
       }
     }
-    
+
     // If we get here, the zone is available
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
         <CheckCircle className="h-3 w-3 mr-1" />
-        {isVisitor ? 'Available for Visitors' : 'Available for Subscribers'}
+        {isVisitor ? "Available for Visitors" : "Available for Subscribers"}
       </span>
     );
   };
 
   return (
-    <div 
+    <div
       className={cn(
-        'p-4 rounded-lg border transition-all',
-        'hover:shadow-md',
-        isSelected 
-          ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200' 
-          : 'border-gray-200 hover:border-gray-300',
-        isDisabled 
-          ? 'opacity-70 cursor-not-allowed bg-gray-50' 
-          : 'cursor-pointer',
+        "p-4 rounded-lg border transition-all",
+        "hover:shadow-md",
+        isSelected
+          ? "ring-2 ring-blue-500 bg-blue-50 border-blue-200"
+          : "border-gray-200 hover:border-gray-300",
+        isDisabled
+          ? "opacity-70 cursor-not-allowed bg-gray-50"
+          : "cursor-pointer",
         className
       )}
       data-available={isAvailable}
@@ -119,7 +123,7 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
       data-maintenance={isMaintenance}
       onClick={handleClick}
       onKeyDown={(e: React.KeyboardEvent) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !isDisabled) {
+        if ((e.key === "Enter" || e.key === " ") && !isDisabled) {
           e.preventDefault();
           // Only update selection, don't trigger check-in
           onSelect(zone.id);
@@ -128,7 +132,9 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
       role="button"
       tabIndex={0}
       aria-disabled={isDisabled}
-      aria-label={`Zone ${zone.name}. ${isDisabled ? 'Not available' : 'Select this zone'}`}
+      aria-label={`Zone ${zone.name}. ${
+        isDisabled ? "Not available" : "Select this zone"
+      }`}
     >
       <div className="flex justify-between items-start mb-3">
         <div>
@@ -138,35 +144,43 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
               <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help" />
             </Tooltip> */}
             {/* style this span */}
-            <span className="px-1 py-0.5 bg-blue-100 text-xs rounded-sm font-medium">{zone.categoryId.replace('cat_', '')[0].toUpperCase() + zone.categoryId.replace('cat_', '').slice(1)}</span>
+            <span className="px-1 py-0.5 bg-blue-100 text-xs rounded-sm font-medium">
+              {zone.categoryId.replace("cat_", "")[0].toUpperCase() +
+                zone.categoryId.replace("cat_", "").slice(1)}
+            </span>
           </h3>
-          <div className="mt-1">
-            {renderStatusBadge()}
-          </div>
+          <div className="mt-1">{renderStatusBadge()}</div>
         </div>
       </div>
-      
+
       <div className="space-y-2 text-sm mt-3">
         {/* Rates Section */}
-        <div className={cn(
-          'p-2 rounded border',
-          zone.specialActive 
-            ? 'bg-amber-50 border-amber-200' 
-            : 'bg-gray-50 border-gray-200'
-        )}>
+        <div
+          className={cn(
+            "p-2 rounded border",
+            zone.specialActive
+              ? "bg-amber-50 border-amber-200"
+              : "bg-gray-50 border-gray-200"
+          )}
+        >
           {/* Standard Rate - Always shown */}
           <div className="flex justify-between items-center">
             <span className="text-xs font-medium text-gray-700">
               Standard Rate
             </span>
-            <span className={cn(
-              'font-medium',
-              zone.specialActive ? 'text-gray-500 line-through' : 'text-gray-800'
-            )}>
-              ${zone.rateNormal.toFixed(2)}<span className="text-xs font-normal text-gray-500">/hr</span>
+            <span
+              className={cn(
+                "font-medium",
+                zone.specialActive
+                  ? "text-gray-500 line-through"
+                  : "text-gray-800"
+              )}
+            >
+              ${zone.rateNormal.toFixed(2)}
+              <span className="text-xs font-normal text-gray-500">/hr</span>
             </span>
           </div>
-          
+
           {/* Special Rate - Only shown when active */}
           {zone.specialActive && (
             <div className="flex justify-between items-center mt-1">
@@ -174,7 +188,8 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
                 🎉 Special Rate
               </span>
               <span className="font-bold text-amber-800">
-                ${zone.rateSpecial.toFixed(2)}<span className="text-xs font-normal text-amber-700">/hr</span>
+                ${zone.rateSpecial.toFixed(2)}
+                <span className="text-xs font-normal text-amber-700">/hr</span>
               </span>
             </div>
           )}
@@ -191,15 +206,21 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
             <div className="font-medium">{zone.occupied}</div>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-blue-50 p-2 rounded">
-            <div className="text-xs text-blue-600">Available for {isVisitor ? 'Visitors' : 'Subscribers'}</div>
-            <div className={cn("font-medium", {
-              'text-blue-700': availableSlots > 0,
-              'text-red-600': availableSlots <= 0
-            })}>
-              {isVisitor ? zone.availableForVisitors : zone.availableForSubscribers}
+            <div className="text-xs text-blue-600">
+              Available for {isVisitor ? "Visitors" : "Subscribers"}
+            </div>
+            <div
+              className={cn("font-medium", {
+                "text-blue-700": availableSlots > 0,
+                "text-red-600": availableSlots <= 0,
+              })}
+            >
+              {isVisitor
+                ? zone.availableForVisitors
+                : zone.availableForSubscribers}
               {availableSlots <= 0 && (
                 <span className="ml-1 text-xs text-red-500">(Full)</span>
               )}
@@ -210,23 +231,25 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
             <div className="font-medium">{zone.reservedSlots || 0}</div>
           </div>
         </div>
-        
+
         {/* Show both availabilities in a small note */}
         <div className="text-xs text-gray-500 mt-1">
-          {isVisitor 
+          {isVisitor
             ? `Subscribers: ${zone.availableForSubscribers} available`
             : `Visitors: ${zone.availableForVisitors} available`}
         </div>
       </div>
-      
+
       {!zone.open ? (
         <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-red-600">
           This zone is currently closed
         </div>
-      ) : !isAvailable && (
-        <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-amber-600">
-          No {isVisitor ? 'visitor' : 'subscriber'} spots available
-        </div>
+      ) : (
+        !isAvailable && (
+          <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-amber-600">
+            No {isVisitor ? "visitor" : "subscriber"} spots available
+          </div>
+        )
       )}
     </div>
   );

@@ -107,6 +107,9 @@ export interface BreakdownItem {
   rateMode: "normal" | "special";
   rate: number;
   amount: number;
+  description?: string;
+  quantity?: number;
+  total?: number;
 }
 
 export interface CheckoutResponse {
@@ -235,4 +238,5 @@ export interface TicketData {
   expiresAt?: string;
   amount?: number;
   qrCode?: string;
+  subscriptionId?: string;
 }

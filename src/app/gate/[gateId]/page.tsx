@@ -1,100 +1,111 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useGateWebSocket } from '@/hooks/useGateWebSocket';
-import { 
-  fetchZones, 
-  checkInVisitor, 
+import { useGateWebSocket } from "@/hooks/useGateWebSocket";
+import {
+  fetchZones,
+  checkInVisitor,
   checkInSubscriber,
-  fetchGateDetails
-} from '@/services/gate/api';
-import { Zone } from '@/types/zone';
-import { TicketData } from '@/types';
-import { GateHeader } from '../../../components/gate/GateHeader';
-import { ZoneGrid } from '../../../components/gate/ZoneGrid';
-import { CheckInForm } from '../../../components/gate/CheckInForm';
-import { SubscriptionCheckInForm } from '../../../components/gate/SubscriptionCheckInForm';
-import { TicketModal } from '../../../components/gate/TicketModal';
+  fetchGateDetails,
+} from "@/services/api";
+import { Zone } from "@/types/zone";
+import { TicketData } from "@/types";
+import { GateHeader } from "../../../components/gate/GateHeader";
+import { ZoneGrid } from "../../../components/gate/ZoneGrid";
+import { CheckInForm } from "../../../components/gate/CheckInForm";
+import { SubscriptionCheckInForm } from "../../../components/gate/SubscriptionCheckInForm";
+import { TicketModal } from "../../../components/gate/TicketModal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle } from "lucide-react";
 
 export default function GatePage() {
   const { gateId } = useParams<{ gateId: string }>();
-  const [activeTab, setActiveTab] = useState<'visitor' | 'subscriber'>('visitor');
+  const [activeTab, setActiveTab] = useState<"visitor" | "subscriber">(
+    "visitor"
+  );
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [ticket, setTicket] = useState<TicketData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [gateName, setGateName] = useState<string>('Loading...');
-  
+  const [gateName, setGateName] = useState<string>("Loading...");
+
   const handleTabChange = (value: string) => {
-    setActiveTab(value as 'visitor' | 'subscriber');
+    setActiveTab(value as "visitor" | "subscriber");
     setError(null);
   };
 
   // Use WebSocket for real-time updates
-  const { zones: wsZones, isConnected, error: wsError, refreshZones } = useGateWebSocket(gateId);
+  const {
+    zones: wsZones,
+    isConnected,
+    error: wsError,
+    refreshZones,
+  } = useGateWebSocket(gateId);
   const [zones, setZones] = useState<Zone[]>([]);
-  
+
   // Fetch initial data
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setIsLoading(true);
-        
+
         // Fetch gate details
         const gateDetails = await fetchGateDetails(gateId);
         setGateName(gateDetails.name || `Gate ${gateId}`);
-        
+
         // Fetch initial zones
         const initialZones = await fetchZones(gateId);
         setZones(initialZones);
-        
       } catch (error) {
-        console.error('Error loading initial data:', error);
-        setError('Failed to load gate information. Please try again later.');
+        console.error("Error loading initial data:", error);
+        setError("Failed to load gate information. Please try again later.");
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     loadInitialData();
   }, [gateId]);
-  
+
   // Update zones when WebSocket updates come in and keep selectedZone in sync
   useEffect(() => {
     if (wsZones.length === 0) return;
-    
+
     setZones(wsZones);
-    
+
     // If no zone is selected, nothing more to do
     if (!selectedZone) return;
-    
+
     // Find the selected zone in the updated zones
     const updatedZone = wsZones.find((z: Zone) => z.id === selectedZone.id);
-    
+
     // If the selected zone no longer exists, deselect it
     if (!updatedZone) {
       setSelectedZone(null);
       return;
     }
-    
+
     // Only update if the zone data has actually changed
-    const zoneProps = ['availableForVisitors', 'availableForSubscribers', 'occupied', 'open'] as const;
-    const hasChanged = zoneProps.some(prop => 
-      selectedZone[prop] !== updatedZone[prop]
+    const zoneProps = [
+      "availableForVisitors",
+      "availableForSubscribers",
+      "occupied",
+      "open",
+    ] as const;
+    const hasChanged = zoneProps.some(
+      (prop) => selectedZone[prop] !== updatedZone[prop]
     );
-    
+
     if (hasChanged) {
       setSelectedZone({
         ...updatedZone,
         availableForVisitors: updatedZone.availableForVisitors,
         availableForSubscribers: updatedZone.availableForSubscribers,
         occupied: updatedZone.occupied,
-        open: updatedZone.open
+        open: updatedZone.open,
       });
     }
   }, [wsZones, selectedZone]);
@@ -105,13 +116,13 @@ export default function GatePage() {
       setSelectedZone(null);
       return;
     }
-    
+
     // If clicking the currently selected zone, deselect it
     if (selectedZone?.id === zoneId) {
       setSelectedZone(null);
     } else {
       // Otherwise select the new zone
-      const zone = zones.find(z => z.id === zoneId);
+      const zone = zones.find((z) => z.id === zoneId);
       if (zone) {
         // Create a complete new zone object with all properties
         setSelectedZone({
@@ -134,99 +145,111 @@ export default function GatePage() {
           open: zone.open,
           updatedAt: zone.updatedAt,
           rateNormal: zone.rateNormal,
-          rateSpecial: zone.rateSpecial
+          rateSpecial: zone.rateSpecial,
         });
       }
     }
   };
 
   // Handle visitor check-in
-  const handleVisitorCheckIn = async (data: { licensePlate: string, zoneId: string }) => {
+  const handleVisitorCheckIn = async (data: {
+    licensePlate: string;
+    zoneId: string;
+  }) => {
     // Get the latest zone data from the zones array
-    const currentZone = zones.find(z => z.id === data.zoneId);
+    const currentZone = zones.find((z) => z.id === data.zoneId);
     if (!currentZone) {
-      setError('Selected zone not found. Please try again.');
+      setError("Selected zone not found. Please try again.");
       return;
     }
-    
+
     // Clear previous errors
     setError(null);
-    
+
     // Validate zone is open and has available slots using the latest zone data
     if (!currentZone.open) {
-      setError('This zone is currently closed. Please select another zone.');
+      setError("This zone is currently closed. Please select another zone.");
       return;
     }
-    
+
     if (currentZone.availableForVisitors <= 0) {
-      setError('No available visitor spots in this zone. Please select another zone.');
+      setError(
+        "No available visitor spots in this zone. Please select another zone."
+      );
       return;
     }
-    
+
     try {
       setError(null);
       const result = await checkInVisitor({
         gateId,
         zoneId: data.zoneId,
-        licensePlate: data.licensePlate
+        licensePlate: data.licensePlate,
       });
-      
+
       // Refresh zones to get the latest availability
       if (refreshZones) {
         await refreshZones();
       }
-      
+
       setTicket(result.ticket as TicketData);
       setIsModalOpen(true);
       return result;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to process check-in';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to process check-in";
       setError(errorMessage);
       throw err;
     }
   };
-  
+
   // Handle subscriber check-in
-  const handleSubscriberCheckIn = async (data: { subscriptionId: string, zoneId: string }) => {
+  const handleSubscriberCheckIn = async (data: {
+    subscriptionId: string;
+    zoneId: string;
+  }) => {
     // Get the latest zone data from the zones array
-    const currentZone = zones.find(z => z.id === data.zoneId);
+    const currentZone = zones.find((z) => z.id === data.zoneId);
     if (!currentZone) {
-      setError('Selected zone not found. Please try again.');
+      setError("Selected zone not found. Please try again.");
       return;
     }
-    
+
     // Clear previous errors
     setError(null);
-    
+
     // Validate zone is open and has available slots using the latest zone data
     if (!currentZone.open) {
-      setError('This zone is currently closed. Please select another zone.');
+      setError("This zone is currently closed. Please select another zone.");
       return;
     }
-    
+
     if (currentZone.availableForSubscribers <= 0) {
-      setError('No available subscriber spots in this zone. Please select another zone.');
+      setError(
+        "No available subscriber spots in this zone. Please select another zone."
+      );
       return;
     }
-    
+
     try {
       setError(null);
       const result = await checkInSubscriber({
         gateId,
         zoneId: data.zoneId,
-        subscriptionId: data.subscriptionId
+        subscriptionId: data.subscriptionId,
       });
-      
+
       // Refresh zones to get the latest availability
       if (refreshZones) {
         await refreshZones();
       }
-      
+
       setTicket(result.ticket as TicketData);
       setIsModalOpen(true);
       return result;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to process check-in';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to process check-in";
       setError(errorMessage);
       throw err;
     }
@@ -242,7 +265,7 @@ export default function GatePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <GateHeader 
+        <GateHeader
           gateId={gateId}
           gateName={gateName}
           isConnected={isConnected}
@@ -259,7 +282,7 @@ export default function GatePage() {
             </AlertDescription>
           </Alert>
         )}
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <h2 className="text-xl font-semibold mb-4">Available Zones</h2>
@@ -270,19 +293,19 @@ export default function GatePage() {
                 <div className="h-40 bg-gray-200 rounded-lg animate-pulse" />
               </div>
             ) : (
-              <ZoneGrid 
-                zones={zones} 
+              <ZoneGrid
+                zones={zones}
                 selectedZone={selectedZone?.id || null}
                 onSelectZone={handleZoneSelect}
-                isVisitor={activeTab === 'visitor'}
+                isVisitor={activeTab === "visitor"}
                 className="mb-6"
               />
             )}
           </div>
-          
+
           <div className="space-y-6">
-            <Tabs 
-              value={activeTab} 
+            <Tabs
+              value={activeTab}
               onValueChange={handleTabChange}
               className="space-y-6 "
             >
@@ -291,24 +314,24 @@ export default function GatePage() {
                   <TabsTrigger value="visitor">Visitor</TabsTrigger>
                   <TabsTrigger value="subscriber">Subscriber</TabsTrigger>
                 </TabsList>
-                
+
                 <div className="text-sm text-gray-500">
-                  {activeTab === 'visitor' 
-                    ? 'Select a zone and enter your license plate'
-                    : 'Enter your subscription ID and select an available zone'}
+                  {activeTab === "visitor"
+                    ? "Select a zone and enter your license plate"
+                    : "Enter your subscription ID and select an available zone"}
                 </div>
               </div>
 
               <TabsContent value="visitor" className="space-y-6">
-                <div className="grid grid-cols-1 gap-6">               
+                <div className="grid grid-cols-1 gap-6">
                   <div className="lg:sticky lg:top-24">
                     <CheckInForm
                       onSubmit={handleVisitorCheckIn}
                       isSubmitting={isLoading}
-                      error={activeTab === 'visitor' ? error : undefined}
+                      error={activeTab === "visitor" ? error : undefined}
                       selectedZone={selectedZone}
                       className="bg-white p-6 rounded-lg shadow-sm border h-full"
-                      isVisitor={activeTab === 'visitor'}
+                      isVisitor={activeTab === "visitor"}
                     />
                   </div>
                 </div>
@@ -320,7 +343,7 @@ export default function GatePage() {
                     <SubscriptionCheckInForm
                       onSubmit={handleSubscriberCheckIn}
                       isSubmitting={isLoading}
-                      error={activeTab === 'subscriber' ? error : undefined}
+                      error={activeTab === "subscriber" ? error : undefined}
                       selectedZone={selectedZone}
                       className="bg-white p-6 rounded-lg shadow-sm border h-full"
                     />
@@ -330,9 +353,9 @@ export default function GatePage() {
             </Tabs>
           </div>
         </div>
-        
+
         {ticket && (
-          <TicketModal 
+          <TicketModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             ticket={ticket}
