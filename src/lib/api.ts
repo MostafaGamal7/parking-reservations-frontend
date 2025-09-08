@@ -4,7 +4,7 @@ type ApiError = {
 };
 
 export async function fetchWithAuth(input: string, init?: RequestInit) {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('welink_auth_token');
   
   const headers = new Headers(init?.headers);
   if (token) {
