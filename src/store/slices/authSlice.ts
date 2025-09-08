@@ -6,7 +6,7 @@ import {
   getStoredAuthData,
   clearAuthData as clearStoredAuthData,
 } from "@/services/auth";
-import { authApi } from "@/services/api";
+// Removed verify/refresh calls that are not supported by backend
 
 export interface LoginCredentials {
   username: string;
@@ -63,8 +63,7 @@ export const initializeAuth = createAsyncThunk(
     try {
       const storedData = getStoredAuthData();
       if (storedData) {
-        // Verify token is still valid
-        await authApi.verifyToken(storedData.token);
+        // Trust stored token (no verify endpoint available)
         return storedData;
       }
       return null;
@@ -75,18 +74,7 @@ export const initializeAuth = createAsyncThunk(
   }
 );
 
-export const refreshUserToken = createAsyncThunk(
-  "auth/refreshToken",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await authApi.refreshToken();
-      return response;
-    } catch {
-      clearStoredAuthData();
-      return rejectWithValue("Token refresh failed. Please login again.");
-    }
-  }
-);
+// Removed refresh token thunk (no backend endpoint)
 
 const authSlice = createSlice({
   name: "auth",
@@ -156,17 +144,7 @@ const authSlice = createSlice({
       });
 
     // Refresh token
-    builder
-      .addCase(refreshUserToken.fulfilled, (state, action) => {
-        state.token = action.payload.token;
-        state.user = action.payload.user;
-      })
-      .addCase(refreshUserToken.rejected, (state) => {
-        state.user = null;
-        state.token = null;
-        state.isAuthenticated = false;
-        state.error = "Session expired. Please login again.";
-      });
+    // No refresh handlers
   },
 });
 

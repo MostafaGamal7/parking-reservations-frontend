@@ -1,7 +1,14 @@
+import { useState, useEffect, useCallback } from "react";
 import { WebSocketMessage } from "@/types";
 
-const WS_URL =
-  process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3000/api/v1/ws";
+const getWebSocketUrl = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem("token");
+  const baseUrl =
+    process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3000/api/v1/ws";
+  // Only connect when a token exists
+  return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : null;
+};
 
 export type WebSocketEventHandler = (message: WebSocketMessage) => void;
 
@@ -33,27 +40,42 @@ export class WebSocketClient {
 
     // Don't try to reconnect if we've exceeded max attempts
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('Max reconnection attempts reached');
+      console.log("Max reconnection attempts reached");
       return;
     }
 
     // If we have an existing connection that's open or connecting, don't create a new one
     if (this.ws) {
-      if (this.ws.readyState === WebSocket.OPEN) {
+      if (
+        this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING
+      ) {
         return;
       }
       // Clean up existing connection
       this.ws.onclose = null;
       this.ws.onerror = null;
-      this.ws.close();
+      try {
+        this.ws.close();
+      } catch (e) {
+        console.error("Error closing WebSocket:", e);
+      }
     }
 
     this.isConnecting = true;
     this.reconnectAttempts++;
 
     try {
-      console.log(`Connecting to WebSocket (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      this.ws = new WebSocket(WS_URL);
+      const wsUrl = getWebSocketUrl();
+      if (!wsUrl) {
+        console.error("Cannot connect to WebSocket: No URL available");
+        return;
+      }
+
+      console.log(
+        `Connecting to WebSocket (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+      );
+      this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
         console.log("WebSocket connected");
@@ -76,7 +98,7 @@ export class WebSocketClient {
             try {
               handler(message);
             } catch (err) {
-              console.error('Error in WebSocket message handler:', err);
+              console.error("Error in WebSocket message handler:", err);
             }
           });
         } catch (error) {
@@ -87,25 +109,26 @@ export class WebSocketClient {
       this.ws.onclose = (event) => {
         console.log(`WebSocket closed: ${event.code} ${event.reason}`);
         this.isConnecting = false;
-        
+
         // Don't try to reconnect if this was a normal closure
         if (event.code === 1000) {
-          console.log('WebSocket closed normally');
+          console.log("WebSocket closed normally");
           return;
         }
-        
+
         this.attemptReconnect();
       };
 
       this.ws.onerror = (event) => {
         console.error("WebSocket error:", event);
-        this.lastError = 'WebSocket connection error';
+        this.lastError = "WebSocket connection error";
         // The onclose handler will be called after onerror
       };
     } catch (error) {
       console.error("Error creating WebSocket connection:", error);
       this.isConnecting = false;
-      this.lastError = error?.toString() || 'Failed to create WebSocket connection';
+      this.lastError =
+        error?.toString() || "Failed to create WebSocket connection";
       this.attemptReconnect();
     }
   }
@@ -113,7 +136,8 @@ export class WebSocketClient {
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.log("Max reconnection attempts reached");
-      this.lastError = 'Unable to connect to server. Please refresh the page to try again.';
+      this.lastError =
+        "Unable to connect to server. Please refresh the page to try again.";
       return;
     }
 
@@ -121,13 +145,15 @@ export class WebSocketClient {
       this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1),
       30000 // Max 30 seconds delay
     );
-    
+
     // Add some jitter to prevent thundering herd
     const jitter = Math.random() * 1000;
     const delay = Math.floor(baseDelay + jitter);
 
     console.log(
-      `Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`
+      `Attempting to reconnect in ${delay}ms (attempt ${
+        this.reconnectAttempts + 1
+      }/${this.maxReconnectAttempts})`
     );
 
     setTimeout(() => {
@@ -137,10 +163,10 @@ export class WebSocketClient {
 
   subscribe(gateId: string): void {
     if (!gateId) return;
-    
+
     // Add to subscribed gates first to ensure it gets subscribed on reconnect
     this.subscribedGates.add(gateId);
-    
+
     if (this.ws?.readyState === WebSocket.OPEN) {
       try {
         this.ws.send(
@@ -150,7 +176,7 @@ export class WebSocketClient {
           })
         );
       } catch (error) {
-        console.error('Error sending subscribe message:', error);
+        console.error("Error sending subscribe message:", error);
       }
     } else {
       // If not connected, try to connect (will resubscribe on open)
@@ -175,8 +201,12 @@ export class WebSocketClient {
 
     // Return unsubscribe function
     return () => {
-      this.eventHandlers.delete(handler);
+      this.removeEventListener(handler);
     };
+  }
+
+  removeEventListener(handler: WebSocketEventHandler): void {
+    this.eventHandlers.delete(handler);
   }
 
   getConnectionState(): number {
@@ -186,15 +216,15 @@ export class WebSocketClient {
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
   }
-  
+
   getLastError(): string | null {
     return this.lastError;
   }
-  
+
   private checkConnection(): void {
     // If we think we're connected but the readyState says otherwise, update our state
     if (this.ws && this.ws.readyState !== WebSocket.OPEN) {
-      console.log('Connection check failed, reconnecting...');
+      console.log("Connection check failed, reconnecting...");
       this.connect();
     }
   }
@@ -210,16 +240,16 @@ export class WebSocketClient {
       clearInterval(this.connectionCheckInterval);
       this.connectionCheckInterval = null;
     }
-    
+
     if (this.ws) {
       try {
-        this.ws.close(1000, 'Client disconnecting');
+        this.ws.close(1000, "Client disconnecting");
       } catch (error) {
-        console.error('Error closing WebSocket:', error);
+        console.error("Error closing WebSocket:", error);
       }
       this.ws = null;
     }
-    
+
     this.eventHandlers.clear();
     this.subscribedGates.clear();
     this.isConnecting = false;
@@ -239,14 +269,61 @@ export const getWebSocketClient = (): WebSocketClient => {
 
 // Hook for React components
 export const useWebSocket = () => {
-  const client = getWebSocketClient();
+  const [client, setClient] = useState<WebSocketClient | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [lastToken, setLastToken] = useState<string | null>(null);
+
+  // Get current token from localStorage
+  const getCurrentToken = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("token");
+  }, []);
+
+  // Handle token changes and reconnection
+  useEffect(() => {
+    const currentToken = getCurrentToken();
+
+    // Only recreate client if token changed
+    if (currentToken !== lastToken) {
+      const wsClient = getWebSocketClient();
+      setClient(wsClient);
+      setIsConnected(wsClient.isConnected());
+      setLastToken(currentToken);
+
+      const handleConnectionChange = () => {
+        setIsConnected(wsClient.isConnected());
+      };
+
+      wsClient.addEventListener(handleConnectionChange);
+      return () => {
+        wsClient.removeEventListener(handleConnectionChange);
+      };
+    }
+  }, [getCurrentToken, lastToken]);
+
+  // Check token periodically to handle logout
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const checkToken = () => {
+      const currentToken = getCurrentToken();
+      if (currentToken !== lastToken) {
+        setLastToken(currentToken);
+      }
+    };
+
+    const interval = setInterval(checkToken, 5000);
+    return () => clearInterval(interval);
+  }, [getCurrentToken, lastToken]);
 
   return {
-    subscribe: client.subscribe.bind(client),
-    unsubscribe: client.unsubscribe.bind(client),
-    addEventListener: client.addEventListener.bind(client),
-    isConnected: client.isConnected.bind(client),
-    getConnectionState: client.getConnectionState.bind(client),
-    getConnectionStatus: client.getConnectionStatus.bind(client),
+    client,
+    isConnected,
+    subscribe: client?.subscribe.bind(client) || (() => {}),
+    unsubscribe: client?.unsubscribe.bind(client) || (() => {}),
+    addEventListener: client?.addEventListener.bind(client) || (() => {}),
+    removeEventListener: client?.removeEventListener.bind(client) || (() => {}),
+    getConnectionState:
+      client?.getConnectionState.bind(client) || (() => "disconnected"),
   };
 };

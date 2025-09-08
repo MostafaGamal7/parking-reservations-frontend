@@ -107,18 +107,9 @@ export const logout = (): void => {
   clearAuthData();
 };
 
+// No refreshToken endpoint on backend; keep a stub to avoid breaking imports
 export const refreshToken = async (): Promise<string | null> => {
-  try {
-    const currentToken = getStoredToken();
-    if (!currentToken) return null;
-
-    const response = await authApi.refreshToken(currentToken);
-    storeAuthData(response);
-    return response.token;
-  } catch (error) {
-    clearAuthData();
-    return null;
-  }
+  return null;
 };
 
 // Check if user is authenticated

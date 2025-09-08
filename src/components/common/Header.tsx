@@ -18,6 +18,7 @@ export default function Header() {
     router.push("/login");
   };
 
+  console.log("user", user);
   return (
     <header className="bg-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -58,10 +59,11 @@ export default function Header() {
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2 text-gray-700">
                     <User className="h-4 w-4" />
-                    <span className="text-sm">{user?.name}</span>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      {user?.role}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        {user?.username}
+                      </span>
+                    </div>
                   </div>
                   <button
                     onClick={handleLogout}
