@@ -16,7 +16,7 @@ A production-ready parking reservation system frontend built with Next.js, TypeS
 
 - **Framework**: Next.js 15 with App Router
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS + shadcn/ui
+- **Styling**: Tailwind CSS + radix/ui
 - **State Management**: Redux Toolkit
 - **Data Fetching**: React Query (TanStack Query)
 - **Icons**: Lucide React
@@ -28,7 +28,6 @@ A production-ready parking reservation system frontend built with Next.js, TypeS
 
    ```bash
    git clone <repository-url>
-   cd frontend
    ```
 
 2. **Install dependencies**
@@ -65,26 +64,85 @@ A production-ready parking reservation system frontend built with Next.js, TypeS
 src/
 ├── app/                    # Next.js App Router pages
 │   ├── admin/             # Admin dashboard pages
-│   ├── checkpoint/        # Checkpoint page
-│   ├── gate/              # Gate pages
+│   │   ├── dashboard/     # Admin dashboard
+│   │   ├── employees/     # Employee management
+│   │   ├── zones/         # Zone management
+│   │   ├── rates/         # Rate management
+│   │   ├── settings/      # System settings
+│   │   └── layout.tsx     # Admin layout
+│   │
+│   ├── checkpoint/        # Checkpoint interface
+│   │   ├── page.tsx
+│   │   └── components/    # Checkpoint-specific components
+│   │
+│   ├── gate/              # Gate interface
+│   │   ├── [gateId]/      # Dynamic gate pages
+│   │   └── components/    # Gate-specific components
+│   │
+│   ├── login/             # Login page
+│   │   └── page.tsx
+│   │
 │   ├── globals.css        # Global styles
 │   ├── layout.tsx         # Root layout
 │   ├── page.tsx           # Home page
 │   └── providers.tsx      # App providers
+│
 ├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   ├── common/           # Reusable components
-│   ├── gate/             # Gate-specific components
-│   ├── checkpoint/       # Checkpoint components
-│   ├── admin/            # Admin components
-│   ├── forms/            # Form components
-│   └── modals/           # Modal components
-├── hooks/                # Custom React hooks
-├── services/             # API and WebSocket services
-├── store/                # Redux store and slices
-├── types/                # TypeScript type definitions
-├── utils/                # Utility functions
-└── styles/               # Additional styles
+│   ├── ui/                # shadcn/ui components
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   ├── dialog.tsx
+│   │   └── ...            # Other UI components
+│   │
+│   ├── common/            # Reusable components
+│   │   ├── Header.tsx
+│   │   ├── Footer.tsx
+│   │   └── ...            # Other common components
+│   │
+│   ├── admin/             # Admin components
+│   │   ├── EmployeeForm.tsx
+│   │   ├── ZoneControls.tsx
+│   │   └── ...            # Other admin components
+│   │
+│   ├── checkpoint/        # Checkpoint components
+│   ├── gate/              # Gate components
+│   ├── forms/             # Form components
+│   └── modals/            # Modal components
+│
+├── hooks/                 # Custom React hooks
+│   ├── useAuth.ts
+│   ├── useWebSocket.ts
+│   └── ...                # Other custom hooks
+│
+├── services/              # API and services
+│   ├── api/               # API clients
+│   ├── websocket/         # WebSocket services
+│   └── ...                # Other services
+│
+├── store/                 # State management
+│   ├── slices/            # Redux slices
+│   │   ├── authSlice.ts
+│   │   ├── zonesSlice.ts
+│   │   └── ...            # Other slices
+│   └── index.ts           # Store configuration
+│
+├── types/                 # TypeScript types
+│   ├── index.ts           # Common types
+│   ├── api/               # API response/request types
+│   └── ...                # Other type definitions
+│
+├── utils/                 # Utility functions
+│   ├── formatters.ts
+│   ├── validators.ts
+│   └── ...                # Other utilities
+│
+├── styles/                # Additional styles
+│   ├── theme.css
+│   └── ...                # Other style files
+│
+└── lib/                   # Third-party library configurations
+    ├── logger.ts
+    └── ...                # Other library configs
 ```
 
 ## 🔧 Available Scripts
@@ -132,19 +190,6 @@ The application is built with a mobile-first approach:
 - **Screen reader** compatibility
 - **High contrast** color schemes
 - **Focus management** for modals and forms
-
-## 🧪 Testing
-
-```bash
-# Run unit tests
-npm run test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage
-npm run test:coverage
-```
 
 ## 🚀 Deployment
 
