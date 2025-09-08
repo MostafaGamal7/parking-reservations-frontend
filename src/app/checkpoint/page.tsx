@@ -63,8 +63,6 @@ export default function CheckpointPage() {
   const [durationHours, setDurationHours] = useState<number>(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  console.log("subscription", subscription);
-
   // Refs
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -134,7 +132,6 @@ export default function CheckpointPage() {
         if (message.type === "ticket-update") {
           const payload = message.payload as TicketUpdatePayload;
           if (payload?.ticketId === ticket.id) {
-            console.log("Received ticket update:", payload);
             // Refresh ticket data when we receive an update
             fetchTicket(ticket.id)
               .then((updatedTicket) => {
@@ -157,7 +154,6 @@ export default function CheckpointPage() {
     // Only subscribe if we're connected and have a valid ticket ID
     if (isConnected && ticket?.id) {
       const subscriptionId = `ticket:${ticket.id}`;
-      console.log("Subscribing to:", subscriptionId);
       subscribe(subscriptionId);
     }
 
@@ -168,7 +164,6 @@ export default function CheckpointPage() {
       // Clean up subscription when ticket changes or component unmounts
       if (isConnected && ticket?.id) {
         const subscriptionId = `ticket:${ticket.id}`;
-        console.log("Unsubscribing from:", subscriptionId);
         unsubscribe(subscriptionId);
       }
     };
@@ -248,8 +243,6 @@ export default function CheckpointPage() {
       if (!ticketData) {
         throw new Error("Ticket not found");
       }
-
-      console.log("ticketData", ticketData);
       setTicket(ticketData);
       setLastUpdate(new Date());
 
@@ -387,12 +380,6 @@ export default function CheckpointPage() {
                     </span>
                   )}
                 </div>
-              </div>
-              <div>
-                <Button variant="ghost" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </Button>
               </div>
             </div>
 

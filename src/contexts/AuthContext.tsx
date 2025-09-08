@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('welink_auth_token');
         if (token) {
           // Get user ID from token
           const userId = token.replace('token-', '');
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser({ 
                 ...userData, 
                 token, 
-                name: userData.name || userData.username,
+                name: userData.username,
                 role: userData.role as 'admin' | 'employee'
               });
               return;
@@ -55,11 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           
           // If we get here, the token is invalid
-          localStorage.removeItem('token');
+          localStorage.removeItem('welink_auth_token');
         }
       } catch (err) {
         console.error('Auth check failed:', err);
-        localStorage.removeItem('token');
+        localStorage.removeItem('welink_auth_token');
       } finally {
         setLoading(false);
       }
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Invalid response from server');
       }
       
-      localStorage.setItem('token', token);
+      localStorage.setItem('welink_auth_token', token);
       setUser({ ...userData, token, name: userData.name || userData.username });
       router.push('/checkpoint');
     } catch (err) {
@@ -107,13 +107,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       // The backend doesn't have a specific logout endpoint, just clear the token locally
-      localStorage.removeItem('token');
+      localStorage.removeItem('welink_auth_token');
       setUser(null);
       router.push('/login');
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      localStorage.removeItem('token');
+      localStorage.removeItem('welink_auth_token');
       setUser(null);
       router.push('/checkpoint/login');
     }

@@ -31,8 +31,6 @@ export const ZoneCard: React.FC<ZoneCardProps> = ({
   const isMaintenance =
     zone.categoryName?.toLowerCase().includes("maintenance") || false;
 
-  console.log(zone);
-  console.log(isVisitor);
   // Get availability information from server data
   const availableSlots = isVisitor
     ? zone.availableForVisitors

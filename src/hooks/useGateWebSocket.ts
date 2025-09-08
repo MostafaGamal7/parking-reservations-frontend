@@ -109,8 +109,6 @@ export const useGateWebSocket = (gateId: string) => {
           zonesMap.set(payload.id, updatedZone);
           return Array.from(zonesMap.values());
         });
-      } else if (message.type === "admin-update") {
-        console.log("Admin update:", message);
       }
     },
     [wsClient]

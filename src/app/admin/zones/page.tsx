@@ -26,12 +26,37 @@ export default function ZonesPage() {
       }
     };
     load();
+
+    // Subscribe to admin updates
+    const ws = new WebSocket("ws://localhost:3000/ws");
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({ type: "subscribe", payload: { type: "admin" } })
+      );
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === "zone-update") {
+        setZones((prevZones) =>
+          prevZones.map((zone) =>
+            zone.id === data.payload.zoneId
+              ? { ...zone, ...data.payload }
+              : zone
+          )
+        );
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
 
   const toggleOpen = async (zoneId: string, open: boolean) => {
     try {
       setSaving(zoneId);
-      const token = localStorage.getItem("token") || "";
+      const token = localStorage.getItem("welink_auth_token") || "";
       const res = await adminApi.updateZoneOpen(zoneId, open, token);
       setZones((prev) =>
         prev.map((z) => (z.id === res.zoneId ? { ...z, open: res.open } : z))

@@ -9,21 +9,34 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
-
+  const search =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : null;
+  const next = search?.get("next") || null;
+  const forcedRole =
+    (search?.get("role") as "admin" | "employee" | null) || null;
   useEffect(() => {
-    if (isAuthenticated) {
-      // Redirect based on user role
-      if (user?.role === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/checkpoint");
-      }
+    if (!isAuthenticated) return;
+    // If a next param exists, prefer it
+    if (next) {
+      router.push(next);
+      return;
     }
-  }, [isAuthenticated, user, router]);
-
-  const handleLoginSuccess = () => {
-    // Redirect based on user role
+    // Otherwise, role-based redirect
     if (user?.role === "admin") {
+      router.push("/admin");
+    } else {
+      router.push("/checkpoint");
+    }
+  }, [isAuthenticated, user, router, next]);
+
+  const handleLoginSuccess = (role: "employee" | "admin") => {
+    if (next) {
+      router.push(next);
+      return;
+    }
+    if (role === "admin") {
       router.push("/admin");
     } else {
       router.push("/checkpoint");
@@ -58,7 +71,10 @@ export default function LoginPage() {
           </div>
 
           {/* Login Form */}
-          <LoginForm onSuccess={handleLoginSuccess} />
+          <LoginForm
+            onSuccess={handleLoginSuccess}
+            defaultRole={forcedRole || "employee"}
+          />
 
           {/* Footer */}
           <div className="text-center mt-8">
@@ -71,4 +87,3 @@ export default function LoginPage() {
     </ErrorBoundary>
   );
 }
-
