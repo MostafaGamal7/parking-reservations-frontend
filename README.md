@@ -263,7 +263,6 @@ This project is proprietary software developed for WeLink Cargo.
 For support and questions:
 
 - Check the [implementation notes](./implementation-notes.md)
-- Review the [API documentation](../backend/API_DOC.md)
 - Contact the development team
 
 ---
